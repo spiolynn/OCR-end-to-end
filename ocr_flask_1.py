@@ -112,16 +112,16 @@ def ctpn():
         # print(Filelist)
         # print(result_json)
         # js = json.dumps(result_json, sort_keys=True, indent=4, separators=(',', ':'))
-        js = json.dumps(response, sort_keys=True, indent=4, separators=(',', ':'))
+        js = json.dumps(response, sort_keys=True, indent=4, separators=(',', ':'),ensure_ascii=False)
         mylogger.info('request output : \n' + js)
 
-        return Response(json.dumps(response), mimetype='application/json')
+        return Response(json.dumps(js), mimetype='application/json')
     except Exception as e:
         mylogger.info('error : \n' + str(e))
         response = generate_json_v2(i,{},'1',str(e),TraceId)
-        js = json.dumps(response, sort_keys=True, indent=4, separators=(',', ':'))
+        js = json.dumps(response, sort_keys=True, indent=4, separators=(',', ':'),ensure_ascii=False)
         mylogger.info('request output : \n' + js)
-        return Response(json.dumps(response), mimetype='application/json')
+        return Response(json.dumps(js), mimetype='application/json')
     
 if __name__ == '__main__':
     app.run(port=5000, debug=True,use_reloader=False)
