@@ -190,3 +190,97 @@ logs |日志目录
 ocr_flask_1.py | flask服务启动脚本
 
 
+
+
+
+### 1 参考腾讯模式
+
+> http://open.youtu.qq.com/legency/#/develop/api-ocr-general
+
+### 2 端到端文本识别API
+
+- 请求包体
+
+参数名 | 类型 | 说明
+---|---|---
+TraceId | string | 交易跟踪号
+FileList | list string | 识别图片路径数组
+Image | String(Bytes) | 需要检测的图像base64编码 jpg png bmp(预留)
+
+
+- 例子
+
+```
+{
+    "FileList":"nas/1.jpg"
+    "Image":"",
+    "TraceId":"20180808010101-0000001"
+}
+```
+
+- 返回
+
+参数名 | 二级参数 | 类型 | 说明
+---|---|---|---
+TraceId || string | 交易跟踪号
+ErrorCode || int | 返回状态值
+ErrorMsg  ||	String | 返回错误消息
+File || list string | 识别图片路径
+Items || Array | 识别出的所有字段信息每个字段包括，item, itemcoord, words
+-|ItemCoord|Object|字段在图像中的像素坐标，包括左上角坐标x,y，以及宽、高width, height
+-|ItemConf|Float|字段在图像中的像素坐标置信度
+-|Words|string|识别结果string
+
+
+- 返回报文正案例
+
+```
+{
+    "ErrorCode":"0",
+    "ErrorMsg":"OK",
+    "File":"./test_images/demo.jpg",
+    "Items":[
+        {
+            "ItemConf":0.984032392501831,
+            "ItemCoord":[
+                111.91547393798828,
+                718.2447509765625,
+                800.0,
+                716.3286743164062,
+                112.0,
+                748.5978393554688,
+                800.0845336914062,
+                746.6817626953125
+            ],
+            "Words":"仓。1998年8月，俄罗斯政府出现债券违约。当相对价值基金夺路逃命之时"
+        },
+        {
+            "ItemConf":0.9650871157646179,
+            "ItemCoord":[
+                112.0,
+                755.1364135742188,
+                816.095947265625,
+                757.438232421875,
+                111.90403747558594,
+                784.4883422851562,
+                816.0,
+                786.7901611328125
+            ],
+            "Words":"{一场“大地震”随之而来。长期资本管理公司濒临破产;许多人害怕这会破坏整"
+        }
+    ],
+    "TraceId":"20180808010101-0000001"
+}
+```
+
+- 返回报文负案例
+
+```
+{
+    "ErrorCode":"1",
+    "ErrorMsg":"[Errno 2] No such file or directory: './test_images/demo1.jpg'",
+    "File":"./test_images/demo1.jpg",
+    "Items":[],
+    "TraceId":"20180808010101-0000001"
+}
+```
