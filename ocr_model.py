@@ -42,7 +42,7 @@ class OCRModel:
         cfg.TEST.checkpoints_path = self.tf_model_path
 
         # init session
-        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=1.0)
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
         config = tf.ConfigProto(allow_soft_placement=True, gpu_options=gpu_options)
         sess = tf.Session(config=config)
 
