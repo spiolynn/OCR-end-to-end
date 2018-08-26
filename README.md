@@ -60,79 +60,128 @@ pip install cython==0.24
 pip install flask
 ```
 
-##### 3 编译cython包
+#### 2.2 win10+py36+gpu 环境
+
+##### 1 安装 anaconda
+
+略
+
+##### 2 安装python运行环境
+
+略
+
+##### 3 安装vs2015运行环境
+
+在My.VisualStudio.com下载Visual Studio Community 2015 with Update 3
+
+安装过程中需要勾选``
+
+##### 4 安装CUDA 8
+
+略
+
+##### 5 编译lib\utils
+
+本工程中的`ctpn\ctpnlib\utils-win10-py36-gpu`，已针对win10+py36+gpu环境编译完成，开箱即用
+
+同时下面给出编译过程中调整
+
+- 新增环境变量CUDA_HOME
+
+以下为示例，请根据实际调整
 
 ```
-cd /ctpn/ctpnlib/utils
+C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0
+```
+
+- 修改gpu_nms.pyx的第25行
+
+此处修改是为了修复运行过程中出现`ValueError: Buffer dtype mismatch, expected 'int_t' but got 'long long'`的错误
+
+将
+
+```
+cdef np.ndarray[np.int_t, ndim=1] \
+```
+
+替换为
+
+```
+cdef np.ndarray[np.intp_t, ndim=1] \
+```
+
+- 运行
+
+```
 cython bbox.pyx
 cython cython_nms.pyx
-python setup_cpu.py build_ext --inplace
-mv utils/* ./
-rm -rf build
-rm -rf utils
+cython gpu_nms.pyx
 ```
 
-- linux setup_cpu.py
+- 修改gpu_nms.cpp，查找`_nms((`，修改第一个参数的类型为 `int *`
+
+将
+
 ```
-from Cython.Build import cythonize
-import os
-from os.path import join as pjoin
-import numpy as np
-from distutils.core import setup
-from distutils.extension import Extension
-from Cython.Distutils import build_ext
-
-def find_in_path(name, path):
-    for dir in path.split(os.pathsep):
-        binpath = pjoin(dir, name)
-        if os.path.exists(binpath):
-            return os.path.abspath(binpath)
-    return None
-
-try:
-    numpy_include = np.get_include()
-except AttributeError:
-    numpy_include = np.get_numpy_include()
-
-def customize_compiler_for_nvcc(self):
-    self.src_extensions.append('.cu')
-    default_compiler_so = self.compiler_so
-    super = self._compile
-    def _compile(obj, src, ext, cc_args, extra_postargs, pp_opts):
-        print(extra_postargs)
-        postargs = extra_postargs['gcc']
-        super(obj, src, ext, cc_args, postargs, pp_opts)
-        # reset the default compiler_so, which we might have changed for cuda
-        self.compiler_so = default_compiler_so
-    # inject our redefined _compile method into the class
-    self._compile = _compile
-
-# run the customize_compiler
-class custom_build_ext(build_ext):
-    def build_extensions(self):
-        customize_compiler_for_nvcc(self.compiler)
-        build_ext.build_extensions(self)
-
-ext_modules = [
-    Extension(
-        "utils.bbox",
-        ["bbox.pyx"],
-        extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
-        include_dirs = [numpy_include]
-    ),
-    Extension(
-        "utils.cython_nms",
-        ["cython_nms.pyx"],
-        extra_compile_args={'gcc': ["-Wno-cpp", "-Wno-unused-function"]},
-        include_dirs = [numpy_include]
-    ),
-]
-
-setup(
-    ext_modules=ext_modules,
-    cmdclass={'build_ext': custom_build_ext},
-)
+_nms((&(*__Pyx_BufPtrStrided1d(__pyx_t_5numpy_int32_t *, __pyx_pybuffernd_keep.rcbuffer->pybuffer.buf, __pyx_t_10, __pyx_pybuffernd_keep.diminfo[0].strides))), (&__pyx_v_num_out), (&(*__Pyx_BufPtrStrided2d(__pyx_t_5numpy_float32_t *, __pyx_pybuffernd_sorted_dets.rcbuffer->pybuffer.buf, __pyx_t_12, __pyx_pybuffernd_sorted_dets.diminfo[0].strides, __pyx_t_13, __pyx_pybuffernd_sorted_dets.diminfo[1].strides))), __pyx_v_boxes_num, __pyx_v_boxes_dim, __pyx_t_14, __pyx_v_device_id);
 ```
+
+替换为
+
+```
+_nms((&(*__Pyx_BufPtrStrided1d(int *, __pyx_pybuffernd_keep.rcbuffer->pybuffer.buf, __pyx_t_10, __pyx_pybuffernd_keep.diminfo[0].strides))), (&__pyx_v_num_out), (&(*__Pyx_BufPtrStrided2d(__pyx_t_5numpy_float32_t *, __pyx_pybuffernd_sorted_dets.rcbuffer->pybuffer.buf, __pyx_t_12, __pyx_pybuffernd_sorted_dets.diminfo[0].strides, __pyx_t_13, __pyx_pybuffernd_sorted_dets.diminfo[1].strides))), __pyx_v_boxes_num, __pyx_v_boxes_dim, __pyx_t_14, __pyx_v_device_id);
+```
+
+- 修改Lib\distutils\_msvccompiler.py
+
+此文件在Python的home目录下，修改前请务必备份
+
+找到
+
+```
+best_version, best_dir = _find_vc2017()
+```
+
+下面新增一行
+
+```
+best_version = None
+```
+
+修改第411行的
+
+```
+else
+```
+
+为
+
+```
+            elif ext in ['.cu']:
+                try:
+                    args = [r'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v8.0\bin\nvcc.exe'] + pp_opts + \
+                           [r'-IC:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\include',
+                            src,
+                            '-odir', r'build\temp.win-amd64-3.6\Release',  # check this path if errors occur
+                            '-arch=sm_35',
+                            '--ptxas-options=-v',
+                            '-c',
+                            '-Xcompiler',
+                            "/wd4819,/EHsc,/W3,/nologo,/O2,/Zi,/MD"]
+                    self.spawn(args)
+                except DistutilsExecError as msg:
+                    raise CompileError(msg)
+                continue
+```
+
+- 重新编译库文件
+
+```
+python setup.py build_ext --inplace
+```
+
+如果运行成功，3个.pyd库文件将生成在`..\utils\utils`下，拷贝到`..\utils`即可
+
 
 ##### 4 服务安装
 
